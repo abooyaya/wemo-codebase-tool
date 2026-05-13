@@ -1,0 +1,39 @@
+# Codebases（各自為獨立 git repo，由 sync 服務管理）
+codebases/
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+venv/
+env/
+.env
+*.egg-info/
+dist/
+build/
+.pytest_cache/
+
+# Node / Next.js
+node_modules/
+.next/
+out/
+.turbo/
+
+# Environment & secrets
+.env
+.env.local
+.env.*.local
+config.yaml
+
+# Vector DB data
+chroma_data/
+index_tracker.db
+
+# IDE
+.vscode/
+.idea/
+*.DS_Store
+
+# Docker
+*.log
