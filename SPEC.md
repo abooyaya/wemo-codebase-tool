@@ -28,9 +28,21 @@
 - **Diagram 渲染**：Mermaid.js
 
 ### 部署
-- **容器化**：Docker Compose（FastAPI + Next.js + ChromaDB）
+- **容器化**：Docker Compose（FastAPI + Next.js + ChromaDB），僅用於 M7 部署階段
 - **Reverse Proxy**：Nginx
 - **串流**：SSE（Server-Sent Events）
+
+### 本機開發
+M1–M6 開發階段不需要 Docker，直接執行：
+```bash
+# 後端
+cd backend && uvicorn app.main:app --reload
+
+# 前端
+cd frontend && npm run dev
+
+# ChromaDB：使用 local persist 模式，不需額外起服務
+```
 
 ---
 
@@ -166,11 +178,12 @@ Merge commit（保留完整 commit 歷史）
 ---
 
 ### M1 — 基礎架構
-- 建立 monorepo 結構
+- 建立 monorepo 結構（`backend/`、`frontend/`）
 - FastAPI skeleton（health check、設定系統）
 - Next.js skeleton（基本聊天 UI）
-- Docker Compose 開發環境
 - Config 系統（LLM provider、codebase 路徑）
+- `README.md`（本機開發啟動說明）
+- ~~Docker Compose~~（推遲至 M7）
 
 ### M2 — Git Sync 服務
 - 手動觸發 git pull API
@@ -299,31 +312,32 @@ async createDispatchOrder(dto: CreateDispatchOrderDto): Promise<DispatchOrder> {
 
 ---
 
-## 設定檔範例（`config.yaml`）
+## 設定檔（`backend/.env`）
 
-```yaml
-llm:
-  provider: openai          # openai | anthropic | ollama
-  model: gpt-4o
-  api_key: ${OPENAI_API_KEY}
+所有設定統一在 `backend/.env`（從 `backend/.env.example` 複製後填入），不需要 yaml 設定檔。
 
-embedding:
-  provider: voyageai       # voyageai | openai | ollama
-  model: voyage-code-2
-  api_key: ${VOYAGE_API_KEY}
+```env
+# LLM
+LLM_PROVIDER=openai          # openai | anthropic | ollama
+LLM_MODEL=gpt-4o
+OPENAI_API_KEY=sk-...
+ANTHROPIC_API_KEY=sk-ant-... # 只在 LLM_PROVIDER=anthropic 時需要
 
-sync:
-  schedule: "0 3 * * *"    # 每天凌晨 3:00（cron 格式）
+# Embedding
+EMBEDDING_PROVIDER=voyageai  # voyageai | openai | ollama
+EMBEDDING_MODEL=voyage-code-2
+VOYAGE_API_KEY=pa-...        # 只在 EMBEDDING_PROVIDER=voyageai 時需要
 
-codebases:
-  - name: mnemosyne
-    path: ./codebases/mnemosyne
-    git_url: https://...
-  - name: mnemosyne-api
-    path: ./codebases/mnemosyne-api
-    git_url: https://...
-  # ...
+# Sync 排程
+SYNC_SCHEDULE=0 3 * * *      # 每天凌晨 3:00（cron 格式）
+
+# ChromaDB
+CHROMA_PERSIST_DIR=./chroma_data
+
+# Codebases（JSON array）
+CODEBASES=[{"name":"mnemosyne","path":"./codebases/mnemosyne"},{"name":"mnemosyne-api","path":"./codebases/mnemosyne-api"},{"name":"talos","path":"./codebases/talos"},{"name":"ServiceConsole-Apollo","path":"./codebases/ServiceConsole-Apollo"},{"name":"UserAPP-Android","path":"./codebases/UserAPP-Android"},{"name":"UserAPP-IOS","path":"./codebases/UserAPP-IOS"}]
 ```
+
 
 ---
 

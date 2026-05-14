@@ -24,7 +24,6 @@ out/
 .env
 .env.local
 .env.*.local
-config.yaml
 
 # Vector DB data
 chroma_data/
