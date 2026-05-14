@@ -4,6 +4,7 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { CodebaseSelector } from "@/components/CodebaseSelector";
 import { MessageBubble } from "@/components/MessageBubble";
 import { ChatInput } from "@/components/ChatInput";
+import { SyncStatus } from "@/components/SyncStatus";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { streamChat, Message, Source } from "@/lib/api";
 
@@ -72,11 +73,12 @@ export default function Home() {
   return (
     <div className="flex flex-col h-screen bg-background">
       {/* Header */}
-      <header className="border-b px-6 py-3 flex items-center gap-3 bg-card">
+      <header className="border-b px-6 py-3 flex items-center justify-between bg-card flex-wrap gap-2">
         <div>
           <h1 className="font-semibold text-base">WeMo Codebase QA</h1>
           <p className="text-xs text-muted-foreground">用自然語言問 codebase 問題</p>
         </div>
+        <SyncStatus />
       </header>
 
       {/* Codebase selector */}
