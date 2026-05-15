@@ -77,6 +77,42 @@ export async function streamChat(
   }
 }
 
+// ── Sync ─────────────────────────────────────────────────────────────────────
+
+export interface RepoSyncResult {
+  name: string;
+  path: string;
+  success: boolean;
+  branch: string;
+  commit: string;
+  message: string;
+  updated_at: string;
+}
+
+export interface SyncResponse {
+  triggered_at: string;
+  results: RepoSyncResult[];
+}
+
+export interface SyncStatusResponse {
+  last_sync_at: string | null;
+  next_sync_at: string | null;
+  schedule: string;
+  results: RepoSyncResult[];
+}
+
+export async function triggerSync(): Promise<SyncResponse> {
+  const res = await fetch(`${API_BASE}/sync`, { method: "POST" });
+  if (!res.ok) throw new Error(`Sync failed: ${res.status}`);
+  return res.json();
+}
+
+export async function getSyncStatus(): Promise<SyncStatusResponse> {
+  const res = await fetch(`${API_BASE}/sync/status`);
+  if (!res.ok) throw new Error(`Status failed: ${res.status}`);
+  return res.json();
+}
+
 export const ALL_CODEBASES = [
   "mnemosyne",
   "mnemosyne-api",
@@ -85,3 +121,4 @@ export const ALL_CODEBASES = [
   "UserAPP-Android",
   "UserAPP-IOS",
 ];
+

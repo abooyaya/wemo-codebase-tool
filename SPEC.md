@@ -224,6 +224,40 @@ Merge commit（保留完整 commit 歷史）
 - 環境變數管理
 - 部署文件
 
+#### Git Sync 部署前提條件
+
+WeMo codebase 託管於內部 GitLab（`athena.wemoscooter.com:10022`），git pull 有以下限制需在部署時處理：
+
+**1. 網路 / VPN**
+- 部署伺服器必須能連到 `athena.wemoscooter.com:10022`
+- 若伺服器在辦公室外部，需設定 **VPN tunnel** 或 **網路白名單**，讓 SSH port 10022 可通
+- 建議直接將伺服器部署在公司內網，避免 VPN 維護複雜度
+
+**2. SSH 金鑰**
+- 後端以 **SSH 方式** clone/pull（`ssh://git@athena.wemoscooter.com:10022/wemo/*.git`）
+- 部署伺服器需有一組可讀取上述 repo 的 SSH 金鑰
+- 金鑰建立方式：
+  ```bash
+  ssh-keygen -t ed25519 -C "codebase-tool-server" -f ~/.ssh/wemo_codebase
+  # 將 ~/.ssh/wemo_codebase.pub 加入 GitLab → Settings → Deploy Keys
+  ```
+- 設定 `~/.ssh/config` 指定金鑰：
+  ```
+  Host athena.wemoscooter.com
+    IdentityFile ~/.ssh/wemo_codebase
+    StrictHostKeyChecking accept-new
+  ```
+- Docker 部署時，將金鑰 mount 至容器：
+  ```yaml
+  volumes:
+    - ~/.ssh/wemo_codebase:/root/.ssh/wemo_codebase:ro
+    - ~/.ssh/config:/root/.ssh/config:ro
+  ```
+
+**3. 初始 Clone**
+- 首次部署需先手動 clone 6 個 repo 到 `codebases/` 目錄（與 Docker volume 對應）
+- git pull（自動 sync）在 clone 完成後才會正常運作
+
 ---
 
 ## RAG Embedding 策略
