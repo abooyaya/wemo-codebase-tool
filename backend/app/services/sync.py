@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import logging
+import os
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
@@ -14,15 +15,35 @@ from app.models.sync import RepoSyncResult, SyncResponse, SyncStatusResponse
 
 logger = logging.getLogger(__name__)
 
+# 專案根目錄：backend/app/services/sync.py → ../../../ = 專案根
+_PROJECT_ROOT = Path(__file__).parent.parent.parent.parent.resolve()
+
+# SSH 選項：不等 passphrase 輸入、連線最多等 10 秒
+_GIT_SSH_CMD = (
+    "ssh -o BatchMode=yes "
+    "-o StrictHostKeyChecking=accept-new "
+    "-o ConnectTimeout=10 "
+    "-o ServerAliveInterval=5 "
+    "-o ServerAliveCountMax=1"
+)
+
 # ── 記憶體內狀態（重啟後清空）────────────────────────────────────────────────
 _last_sync_at: Optional[datetime] = None
 _last_results: list[RepoSyncResult] = []
 
 
+def _resolve_path(path: str) -> Path:
+    """將 .env 中的路徑解析為絕對路徑，相對路徑以專案根目錄為基準。"""
+    p = Path(path).expanduser()
+    if p.is_absolute():
+        return p
+    return (_PROJECT_ROOT / p).resolve()
+
+
 def _pull_repo(name: str, path: str) -> RepoSyncResult:
     """對單一 repo 執行 git pull，回傳結果。"""
     now = datetime.now(timezone.utc)
-    abs_path = Path(path).expanduser().resolve()
+    abs_path = _resolve_path(path)
 
     try:
         repo = git.Repo(abs_path)
@@ -34,13 +55,12 @@ def _pull_repo(name: str, path: str) -> RepoSyncResult:
         )
 
     try:
-        origin = repo.remotes.origin
-        fetch_info = origin.pull()
+        # 注入 SSH 選項，確保不會 hang 在等待使用者輸入
+        with repo.git.custom_environment(GIT_SSH_COMMAND=_GIT_SSH_CMD):
+            fetch_info = repo.remotes.origin.pull()
 
         branch = repo.active_branch.name
         commit = repo.head.commit.hexsha[:7]
-
-        # fetch_info 是一個 list，取第一個來判斷是否有更新
         note = fetch_info[0].note if fetch_info else ""
         msg = f"已更新 ({note})" if note else "已是最新"
 
@@ -51,10 +71,21 @@ def _pull_repo(name: str, path: str) -> RepoSyncResult:
             message=msg, updated_at=now,
         )
     except GitCommandError as exc:
-        logger.error("❌  %s: git pull 失敗 — %s", name, exc)
+        # 擷取簡短訊息（去掉多餘 stderr 噪音）
+        err_lines = [l.strip() for l in str(exc).splitlines() if l.strip()]
+        short_msg = next(
+            (l for l in err_lines if l and not l.startswith("cmd")), str(exc)
+        )[:200]
+        logger.error("❌  %s: git pull 失敗 — %s", name, short_msg)
         return RepoSyncResult(
             name=name, path=path, success=False,
-            message=str(exc), updated_at=now,
+            message=short_msg, updated_at=now,
+        )
+    except Exception as exc:
+        logger.error("❌  %s: 未預期錯誤 — %s", name, exc)
+        return RepoSyncResult(
+            name=name, path=path, success=False,
+            message=str(exc)[:200], updated_at=now,
         )
 
 
